@@ -106,34 +106,34 @@ sds sdsnewlen(const void *init, size_t initlen) {
     fp = ((unsigned char*)s)-1;
     switch(type) {
         case SDS_TYPE_5: {
-            *fp = type | (initlen << SDS_TYPE_BITS);
+            *fp = type | (unsigned char)(initlen << SDS_TYPE_BITS);
             break;
         }
         case SDS_TYPE_8: {
             SDS_HDR_VAR(8,s);
-            sh->len = initlen;
-            sh->alloc = initlen;
+            sh->len = (uint8_t)initlen;
+            sh->alloc = (uint8_t)initlen;
             *fp = type;
             break;
         }
         case SDS_TYPE_16: {
             SDS_HDR_VAR(16,s);
-            sh->len = initlen;
-            sh->alloc = initlen;
+            sh->len = (uint16_t)initlen;
+            sh->alloc = (uint16_t)initlen;
             *fp = type;
             break;
         }
         case SDS_TYPE_32: {
             SDS_HDR_VAR(32,s);
-            sh->len = initlen;
-            sh->alloc = initlen;
+            sh->len = (uint32_t)initlen;
+            sh->alloc = (uint32_t)initlen;
             *fp = type;
             break;
         }
         case SDS_TYPE_64: {
             SDS_HDR_VAR(64,s);
-            sh->len = initlen;
-            sh->alloc = initlen;
+            sh->len = (uint64_t)initlen;
+            sh->alloc = (uint64_t)initlen;
             *fp = type;
             break;
         }
@@ -330,7 +330,7 @@ void *sdsAllocPtr(sds s) {
  * ... check for nread <= 0 and handle it ...
  * sdsIncrLen(s, nread);
  */
-void sdsIncrLen(sds s, ssize_t incr) {
+void sdsIncrLen(sds s, ptrdiff_t incr) {
     unsigned char flags = s[-1];
     size_t len;
     switch(flags&SDS_TYPE_MASK) {
@@ -338,32 +338,32 @@ void sdsIncrLen(sds s, ssize_t incr) {
             unsigned char *fp = ((unsigned char*)s)-1;
             unsigned char oldlen = SDS_TYPE_5_LEN(flags);
             assert((incr > 0 && oldlen+incr < 32) || (incr < 0 && oldlen >= (unsigned int)(-incr)));
-            *fp = SDS_TYPE_5 | ((oldlen+incr) << SDS_TYPE_BITS);
+            *fp = SDS_TYPE_5 | ((unsigned char)(oldlen+incr) << SDS_TYPE_BITS);
             len = oldlen+incr;
             break;
         }
         case SDS_TYPE_8: {
             SDS_HDR_VAR(8,s);
             assert((incr >= 0 && sh->alloc-sh->len >= incr) || (incr < 0 && sh->len >= (unsigned int)(-incr)));
-            len = (sh->len += incr);
+            len = (sh->len += (uint8_t)incr);
             break;
         }
         case SDS_TYPE_16: {
             SDS_HDR_VAR(16,s);
             assert((incr >= 0 && sh->alloc-sh->len >= incr) || (incr < 0 && sh->len >= (unsigned int)(-incr)));
-            len = (sh->len += incr);
+            len = (sh->len += (uint16_t)incr);
             break;
         }
         case SDS_TYPE_32: {
             SDS_HDR_VAR(32,s);
             assert((incr >= 0 && sh->alloc-sh->len >= (unsigned int)incr) || (incr < 0 && sh->len >= (unsigned int)(-incr)));
-            len = (sh->len += incr);
+            len = (sh->len += (uint32_t)incr);
             break;
         }
         case SDS_TYPE_64: {
             SDS_HDR_VAR(64,s);
             assert((incr >= 0 && sh->alloc-sh->len >= (uint64_t)incr) || (incr < 0 && sh->len >= (uint64_t)(-incr)));
-            len = (sh->len += incr);
+            len = (sh->len += (uint64_t)incr);
             break;
         }
         default: len = 0; /* Just to avoid compilation warnings. */
@@ -447,7 +447,7 @@ sds sdscpy(sds s, const char *t) {
  * The function returns the length of the null-terminated string
  * representation stored at 's'. */
 #define SDS_LLSTR_SIZE 21
-int sdsll2str(char *s, long long value) {
+static size_t sdsll2str(char *s, long long value) {
     char *p, aux;
     unsigned long long v;
     size_t l;
@@ -479,7 +479,7 @@ int sdsll2str(char *s, long long value) {
 }
 
 /* Identical sdsll2str(), but for unsigned long long type. */
-int sdsull2str(char *s, unsigned long long v) {
+static size_t sdsull2str(char *s, unsigned long long v) {
     char *p, aux;
     size_t l;
 
@@ -513,7 +513,7 @@ int sdsull2str(char *s, unsigned long long v) {
  */
 sds sdsfromlonglong(long long value) {
     char buf[SDS_LLSTR_SIZE];
-    int len = sdsll2str(buf,value);
+    size_t len = sdsll2str(buf,value);
 
     return sdsnewlen(buf,len);
 }
@@ -600,7 +600,7 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
 sds sdscatfmt(sds s, char const *fmt, ...) {
     size_t initlen = sdslen(s);
     const char *f = fmt;
-    long i;
+    size_t i;
     va_list ap;
 
     /* To avoid continuous reallocations, let's start with a buffer that
@@ -645,7 +645,7 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
                     num = va_arg(ap,long long);
                 {
                     char buf[SDS_LLSTR_SIZE];
-                    l = sdsll2str(buf,num);
+                    size_t l = sdsll2str(buf,num);
                     if (sdsavail(s) < l) {
                         s = sdsMakeRoomFor(s,l);
                     }
@@ -736,7 +736,7 @@ sds sdstrim(sds s, const char *cset) {
  * s = sdsnew("Hello World");
  * sdsrange(s,1,-1); => "ello World"
  */
-void sdsrange(sds s, ssize_t start, ssize_t end) {
+void sdsrange(sds s, ptrdiff_t start, ptrdiff_t end) {
     size_t newlen, len = sdslen(s);
 
     if (len == 0) return;
@@ -750,9 +750,9 @@ void sdsrange(sds s, ssize_t start, ssize_t end) {
     }
     newlen = (start > end) ? 0 : (end-start)+1;
     if (newlen != 0) {
-        if (start >= (ssize_t)len) {
+        if (start >= (ptrdiff_t)len) {
             newlen = 0;
-        } else if (end >= (ssize_t)len) {
+        } else if (end >= (ptrdiff_t)len) {
             end = len-1;
             newlen = (start > end) ? 0 : (end-start)+1;
         }
@@ -817,7 +817,7 @@ int sdscmp(const sds s1, const sds s2) {
  * requires length arguments. sdssplit() is just the
  * same function but for zero-terminated strings.
  */
-sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count) {
+sds *sdssplitlen(const char *s, ptrdiff_t len, const char *sep, int seplen, int *count) {
     int elements = 0, slots = 5;
     long start = 0, j;
     sds *tokens;
