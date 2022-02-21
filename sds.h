@@ -38,6 +38,7 @@ extern const char *SDS_NOINIT;
 
 #include <sys/types.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdint.h>
 
 typedef char *sds;
